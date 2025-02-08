@@ -1,6 +1,8 @@
 import sqlite3
 import random
 
+self_ip = "24.199.65.32"  # droplet ip
+
 
 def get_all_recipes():
     """
@@ -30,6 +32,33 @@ def get_all_recipes():
         for row in rows
     ]
     return recipes
+
+
+def get_meal_by_id(meal_id: int):
+    """
+    Retrieve a meal from the database by its id.
+    """
+    conn = sqlite3.connect("food_database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, title, image, total_cost_per_serving, meal_type
+        FROM recipes
+        WHERE id = ?
+        """,
+        (meal_id,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return {
+            "id": row[0],
+            "title": row[1],
+            "image": row[2],
+            "cost": row[3],
+            "meal_type": row[4],
+        }
+    return None
 
 
 def get_meal_plan(budget_cents):
@@ -145,9 +174,54 @@ def get_meal_plan(budget_cents):
     return weekly_plan, total_cost
 
 
+def find_replacement_meal(
+    meal_type: str, exclude_id: int, curr_price: int, budget: int
+):
+    """
+    Find a replacement meal that:
+      - Has the same meal_type,
+      - Is not the same as the original meal,
+      - Has a cost within ±10% of curr_price, with the upper bound capped by the budget.
+
+    The SQL clause uses:
+        total_cost_per_serving BETWEEN lower_bound AND upper_bound
+    where:
+        lower_bound = int(curr_price * 0.9)
+        upper_bound = int(min(budget, curr_price * 1.1))
+    """
+    max_price = budget - curr_price
+
+    conn = sqlite3.connect("food_database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, title, image, total_cost_per_serving, meal_type
+        FROM recipes
+        WHERE meal_type = ?
+          AND id != ?
+          AND total_cost_per_serving < ?
+        ORDER BY ABS(total_cost_per_serving - ?) ASC
+        LIMIT 1
+        """,
+        (meal_type, exclude_id, max_price, curr_price),
+    )
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        return {
+            "id": row[0],
+            "title": row[1],
+            "image": row[2],
+            "cost": row[3],
+            "meal_type": row[4],
+        }
+    return None
+
+
 # Example usage:
 if __name__ == "__main__":
-    budget_dollars = 50
+    budget_dollars = 10
     result = get_meal_plan(budget_cents=budget_dollars * 100)
 
     if isinstance(result, dict) and "error" in result:

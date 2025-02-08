@@ -1,7 +1,7 @@
 import requests
 import sqlite3
 
-API_KEY = "171d9d76f62d4d3e876762b5357bb818"
+API_KEY = "<api_key>"
 URL = "https://api.spoonacular.com/"
 
 

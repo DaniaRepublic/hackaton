@@ -1,7 +1,7 @@
 import sqlite3
 import random
 
-self_ip = "24.199.65.32"  # droplet ip
+self_ip = "24.199.65.32:8000"  # droplet ip
 
 
 def get_all_recipes():
@@ -162,13 +162,12 @@ def get_meal_plan(budget_cents):
         }
 
     # Construct the weekly plan.
-    # Each day gets one breakfast and two lunch/dinner meals.
     weekly_plan = []
     for i in range(7):
         day_breakfast = selected_breakfast[i]
         day_lunch = selected_lunch_dinner[i * 2]
         day_dinner = selected_lunch_dinner[i * 2 + 1]
-        weekly_plan.append([day_breakfast, day_lunch, day_dinner])
+        weekly_plan += [day_breakfast, day_lunch, day_dinner]
 
     total_cost = budget_cents - remaining_budget
     return weekly_plan, total_cost
